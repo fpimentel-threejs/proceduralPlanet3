@@ -1,0 +1,177 @@
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import * as dat from 'lil-gui'
+import CANNON from 'cannon'
+import vertexShader from './shaders/vertex.glsl'
+import fragmentShader from './shaders/fragment.glsl'
+
+THREE.ColorManagement.enabled = false
+
+/**
+ * Debug
+ */
+const gui = new dat.GUI()
+const debugObject = {}
+
+/**
+ * Base
+ */
+// Canvas
+const canvas = document.querySelector('canvas.webgl')
+
+// Scene
+const scene = new THREE.Scene()
+
+//Planet
+
+const planetProps = {
+    color: new THREE.Color(0, 1, 0),
+    strength: 1.0,
+    numLayers: 2.0,
+    baseRoughness: 2.0,
+    roughness: 2.0,
+    persistence: 0.5,
+    minValue: 0.0
+}
+
+const filters = {
+    enabled: true,
+    properties: planetProps
+}
+
+const geometry = new THREE.BoxGeometry(1, 1, 1, 64, 64, 64)
+
+gui.addColor(planetProps, 'color')
+gui.add(planetProps, 'strength', 0, 1).step(0.01)
+gui.add(planetProps, 'numLayers', 2, 5).step(1)
+gui.add(planetProps, 'roughness', 0, 5).step(0.01)
+gui.add(planetProps, 'baseRoughness', 1, 5).step(0.01)
+gui.add(planetProps, 'persistence', 0, 1).step(0.01)
+gui.add(planetProps, 'minValue', 0, 1).step(0.01)
+
+const customMaterial = new THREE.ShaderMaterial({
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    uniforms:
+    {
+        rgb: { value: planetProps.color },
+        strength: { value: planetProps.strength },
+        numLayers: { value: planetProps.numLayers },
+        baseRoughness: { value: planetProps.baseRoughness },
+        roughness: { value: planetProps.roughness },
+        persistence: { value: planetProps.persistence },
+        minValue: { value: planetProps.minValue },
+        filters: { value: planetProps.filters }
+    }
+})
+
+customMaterial.needsUpdate = true
+
+customMaterial.wireframe = false
+
+const planet = new THREE.Mesh(geometry, customMaterial);
+scene.add(planet)
+
+const basePlanet = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5, 32, 16),
+    new THREE.MeshStandardMaterial({color: 'blue'})
+    )
+scene.add(basePlanet)
+/**
+ * Textures
+ */
+
+
+/**
+ * Physics
+ */
+
+
+// Materials
+
+/**
+ * Lights
+ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+scene.add(ambientLight)
+
+/**
+ * Sizes
+ */
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+
+window.addEventListener('resize', () =>
+{
+    // Update sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
+
+    // Update camera
+    camera.aspect = sizes.width / sizes.height
+    camera.updateProjectionMatrix()
+
+    // Update renderer
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+})
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.set(- 3, 3, 3)
+scene.add(camera)
+
+// Controls
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas
+})
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+/**
+ * Utils
+ */
+function updateShader(){
+    customMaterial.uniforms.strength.value = planetProps.strength;
+    customMaterial.uniforms.roughness.value = planetProps.roughness;
+    customMaterial.uniforms.baseRoughness.value = planetProps.baseRoughness;
+    customMaterial.uniforms.persistence.value = planetProps.persistence;
+    customMaterial.uniforms.numLayers.value = planetProps.numLayers;
+    customMaterial.uniforms.minValue.value = planetProps.minValue;
+}
+
+/**
+ * Animate
+ */
+const clock = new THREE.Clock()
+
+const tick = () =>
+{
+
+    // Update controls
+    controls.update()
+
+    updateShader()
+
+    // Render
+    renderer.render(scene, camera)
+
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
+}
+
+tick()
